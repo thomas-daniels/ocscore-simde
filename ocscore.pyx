@@ -10,20 +10,20 @@ from libc.stdlib cimport abort, malloc, free
 from libc.stdint cimport int8_t,  int32_t,  int64_t
 from libc.stdint cimport uint8_t, uint16_t, uint32_t, uint64_t
 
-cdef extern from "immintrin.h":
-    ctypedef struct __m256i:
+cdef extern from "simde/x86/avx2.h":
+    ctypedef struct simde__m256i:
         pass
 
-    __m256i _mm256_lddqu_si256(__m256i *) nogil
-    void _mm256_storeu_si256 (__m256i *, __m256i) nogil
-    __m256i _mm256_setzero_si256() nogil
-    __m256i _mm256_xor_si256(__m256i, __m256i) nogil
-    __m256i _mm256_adds_epu8(__m256i, __m256i) nogil
-    __m256i _mm256_min_epu8(__m256i, __m256i) nogil
-    __m256i _mm256_set1_epi8(int8_t) nogil
-    __m256i _mm256_cmpeq_epi8(__m256i, __m256i) nogil
-    __m256i _mm256_andnot_si256(__m256i, __m256i) nogil
-    int32_t _mm256_extract_epi8(__m256i, int32_t) nogil
+    simde__m256i simde_mm256_lddqu_si256(simde__m256i *) nogil
+    void simde_mm256_storeu_si256 (simde__m256i *, simde__m256i) nogil
+    simde__m256i simde_mm256_setzero_si256() nogil
+    simde__m256i simde_mm256_xor_si256(simde__m256i, simde__m256i) nogil
+    simde__m256i simde_mm256_adds_epu8(simde__m256i, simde__m256i) nogil
+    simde__m256i simde_mm256_min_epu8(simde__m256i, simde__m256i) nogil
+    simde__m256i simde_mm256_set1_epi8(int8_t) nogil
+    simde__m256i simde_mm256_cmpeq_epi8(simde__m256i, simde__m256i) nogil
+    simde__m256i simde_mm256_andnot_si256(simde__m256i, simde__m256i) nogil
+    int32_t simde_mm256_extract_epi8(simde__m256i, int32_t) nogil
 
 #------------------------------------------------------------------------------
 
@@ -61,53 +61,53 @@ def mapids(leafs, leaf2id, dtype):
 cdef uint32_t _ocscore_colmaj8(uint8_t[:, :] refset, uint8_t[:] test) nogil:
     cdef int i
     cdef int j
-    cdef __m256i vcnt = _mm256_set1_epi8(-1) # 255
-    cdef __m256i s # sum
-    cdef __m256i x
+    cdef simde__m256i vcnt = simde_mm256_set1_epi8(-1) # 255
+    cdef simde__m256i s # sum
+    cdef simde__m256i x
     cdef uint32_t min_cnt = ~0
     for i in xrange(0, (refset.shape[0]//32)*32, 32): # avx2 256-bit registers
-        s = _mm256_setzero_si256()
+        s = simde_mm256_setzero_si256()
         for j in xrange(refset.shape[1]):
-            x = _mm256_lddqu_si256(<__m256i *>&refset[i, j])
-            x = _mm256_xor_si256(x, _mm256_set1_epi8(test[j]))
-            x = _mm256_cmpeq_epi8(x, _mm256_setzero_si256())
+            x = simde_mm256_lddqu_si256(<simde__m256i *>&refset[i, j])
+            x = simde_mm256_xor_si256(x, simde_mm256_set1_epi8(test[j]))
+            x = simde_mm256_cmpeq_epi8(x, simde_mm256_setzero_si256())
             # NOT(x) & 0b00000001 ==> 0b1 if allzero, else 0
-            x = _mm256_andnot_si256(x, _mm256_set1_epi8(1))
-            s = _mm256_adds_epu8(s, x)
-        vcnt = _mm256_min_epu8(vcnt, s)
+            x = simde_mm256_andnot_si256(x, simde_mm256_set1_epi8(1))
+            s = simde_mm256_adds_epu8(s, x)
+        vcnt = simde_mm256_min_epu8(vcnt, s)
 
-    min_cnt = min(min_cnt, _mm256_extract_epi8(vcnt, 0))
-    min_cnt = min(min_cnt, _mm256_extract_epi8(vcnt, 1))
-    min_cnt = min(min_cnt, _mm256_extract_epi8(vcnt, 2))
-    min_cnt = min(min_cnt, _mm256_extract_epi8(vcnt, 3))
-    min_cnt = min(min_cnt, _mm256_extract_epi8(vcnt, 4))
-    min_cnt = min(min_cnt, _mm256_extract_epi8(vcnt, 5))
-    min_cnt = min(min_cnt, _mm256_extract_epi8(vcnt, 6))
-    min_cnt = min(min_cnt, _mm256_extract_epi8(vcnt, 7))
-    min_cnt = min(min_cnt, _mm256_extract_epi8(vcnt, 8))
-    min_cnt = min(min_cnt, _mm256_extract_epi8(vcnt, 9))
-    min_cnt = min(min_cnt, _mm256_extract_epi8(vcnt, 10))
-    min_cnt = min(min_cnt, _mm256_extract_epi8(vcnt, 11))
-    min_cnt = min(min_cnt, _mm256_extract_epi8(vcnt, 12))
-    min_cnt = min(min_cnt, _mm256_extract_epi8(vcnt, 13))
-    min_cnt = min(min_cnt, _mm256_extract_epi8(vcnt, 14))
-    min_cnt = min(min_cnt, _mm256_extract_epi8(vcnt, 15))
-    min_cnt = min(min_cnt, _mm256_extract_epi8(vcnt, 16))
-    min_cnt = min(min_cnt, _mm256_extract_epi8(vcnt, 17))
-    min_cnt = min(min_cnt, _mm256_extract_epi8(vcnt, 18))
-    min_cnt = min(min_cnt, _mm256_extract_epi8(vcnt, 19))
-    min_cnt = min(min_cnt, _mm256_extract_epi8(vcnt, 20))
-    min_cnt = min(min_cnt, _mm256_extract_epi8(vcnt, 21))
-    min_cnt = min(min_cnt, _mm256_extract_epi8(vcnt, 22))
-    min_cnt = min(min_cnt, _mm256_extract_epi8(vcnt, 23))
-    min_cnt = min(min_cnt, _mm256_extract_epi8(vcnt, 24))
-    min_cnt = min(min_cnt, _mm256_extract_epi8(vcnt, 25))
-    min_cnt = min(min_cnt, _mm256_extract_epi8(vcnt, 26))
-    min_cnt = min(min_cnt, _mm256_extract_epi8(vcnt, 27))
-    min_cnt = min(min_cnt, _mm256_extract_epi8(vcnt, 28))
-    min_cnt = min(min_cnt, _mm256_extract_epi8(vcnt, 29))
-    min_cnt = min(min_cnt, _mm256_extract_epi8(vcnt, 30))
-    min_cnt = min(min_cnt, _mm256_extract_epi8(vcnt, 31))
+    min_cnt = min(min_cnt, simde_mm256_extract_epi8(vcnt, 0))
+    min_cnt = min(min_cnt, simde_mm256_extract_epi8(vcnt, 1))
+    min_cnt = min(min_cnt, simde_mm256_extract_epi8(vcnt, 2))
+    min_cnt = min(min_cnt, simde_mm256_extract_epi8(vcnt, 3))
+    min_cnt = min(min_cnt, simde_mm256_extract_epi8(vcnt, 4))
+    min_cnt = min(min_cnt, simde_mm256_extract_epi8(vcnt, 5))
+    min_cnt = min(min_cnt, simde_mm256_extract_epi8(vcnt, 6))
+    min_cnt = min(min_cnt, simde_mm256_extract_epi8(vcnt, 7))
+    min_cnt = min(min_cnt, simde_mm256_extract_epi8(vcnt, 8))
+    min_cnt = min(min_cnt, simde_mm256_extract_epi8(vcnt, 9))
+    min_cnt = min(min_cnt, simde_mm256_extract_epi8(vcnt, 10))
+    min_cnt = min(min_cnt, simde_mm256_extract_epi8(vcnt, 11))
+    min_cnt = min(min_cnt, simde_mm256_extract_epi8(vcnt, 12))
+    min_cnt = min(min_cnt, simde_mm256_extract_epi8(vcnt, 13))
+    min_cnt = min(min_cnt, simde_mm256_extract_epi8(vcnt, 14))
+    min_cnt = min(min_cnt, simde_mm256_extract_epi8(vcnt, 15))
+    min_cnt = min(min_cnt, simde_mm256_extract_epi8(vcnt, 16))
+    min_cnt = min(min_cnt, simde_mm256_extract_epi8(vcnt, 17))
+    min_cnt = min(min_cnt, simde_mm256_extract_epi8(vcnt, 18))
+    min_cnt = min(min_cnt, simde_mm256_extract_epi8(vcnt, 19))
+    min_cnt = min(min_cnt, simde_mm256_extract_epi8(vcnt, 20))
+    min_cnt = min(min_cnt, simde_mm256_extract_epi8(vcnt, 21))
+    min_cnt = min(min_cnt, simde_mm256_extract_epi8(vcnt, 22))
+    min_cnt = min(min_cnt, simde_mm256_extract_epi8(vcnt, 23))
+    min_cnt = min(min_cnt, simde_mm256_extract_epi8(vcnt, 24))
+    min_cnt = min(min_cnt, simde_mm256_extract_epi8(vcnt, 25))
+    min_cnt = min(min_cnt, simde_mm256_extract_epi8(vcnt, 26))
+    min_cnt = min(min_cnt, simde_mm256_extract_epi8(vcnt, 27))
+    min_cnt = min(min_cnt, simde_mm256_extract_epi8(vcnt, 28))
+    min_cnt = min(min_cnt, simde_mm256_extract_epi8(vcnt, 29))
+    min_cnt = min(min_cnt, simde_mm256_extract_epi8(vcnt, 30))
+    min_cnt = min(min_cnt, simde_mm256_extract_epi8(vcnt, 31))
 
     cdef uint8_t tmp
     for i in xrange((refset.shape[0]//32)*32, refset.shape[0]):
@@ -130,18 +130,18 @@ cdef void _ocscores_colmaj8(uint8_t[:, :] refset, uint8_t[:, :] test, uint32_t[:
 cdef void _ocscore_colmaj_topk(uint8_t[:, :] refset, uint8_t[:] test, uint8_t *buf) nogil:
     cdef int i
     cdef int j
-    cdef __m256i s # sum
-    cdef __m256i x
+    cdef simde__m256i s # sum
+    cdef simde__m256i x
     for i in xrange(0, (refset.shape[0]//32)*32, 32): # avx2 256-bit registers
-        s = _mm256_setzero_si256()
+        s = simde_mm256_setzero_si256()
         for j in xrange(refset.shape[1]):
-            x = _mm256_lddqu_si256(<__m256i *>&refset[i, j])
-            x = _mm256_xor_si256(x, _mm256_set1_epi8(test[j]))
-            x = _mm256_cmpeq_epi8(x, _mm256_setzero_si256())
+            x = simde_mm256_lddqu_si256(<simde__m256i *>&refset[i, j])
+            x = simde_mm256_xor_si256(x, simde_mm256_set1_epi8(test[j]))
+            x = simde_mm256_cmpeq_epi8(x, simde_mm256_setzero_si256())
             # NOT(x) & 0b00000001 ==> 0b1 if allzero, else 0
-            x = _mm256_andnot_si256(x, _mm256_set1_epi8(1))
-            s = _mm256_adds_epu8(s, x)
-        _mm256_storeu_si256(<__m256i *>&buf[i], s)
+            x = simde_mm256_andnot_si256(x, simde_mm256_set1_epi8(1))
+            s = simde_mm256_adds_epu8(s, x)
+        simde_mm256_storeu_si256(<simde__m256i *>&buf[i], s)
 
     cdef uint8_t tmp
     for i in xrange((refset.shape[0]//32)*32, refset.shape[0]):

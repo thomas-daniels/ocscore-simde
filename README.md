@@ -1,3 +1,21 @@
+OC-SCORE uses Intel intrinsics. This fork makes use of `simd-everywhere` so OC-SCORE can be compiled for other architectures as well. Tested on Apple Silicon.
+
+To compile this fork, make sure you have the `simd-everywhere` header files and that they are in the include path of your C compiler.
+
+## Specific instructions for Mac
+
+Install `simd-everywhere`:
+
+```
+brew install simde
+```
+
+Compile OC-SCORE:
+
+```
+CPATH="$CPATH:$(brew --prefix)/include" python setup.py build_ext --inplace
+```
+
 # OC-SCORE: Detecting Evasion Attacks in Deployed Tree Ensembles
 
 ## Installing OC-SCORE
